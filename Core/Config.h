@@ -17,8 +17,11 @@ extern float camY;
 extern float sensitivity;
 extern bool cursorHidden;
 
+// Sensitivity converter
+extern float mouseSensitivity;
+
 // Game States and Modes
-enum GameState { STATE_MENU, STATE_PLAYING };
+enum GameState { STATE_MENU, STATE_PLAYING, STATE_SETTINGS };
 enum GameMode { MODE_PRECISION, MODE_CORRECTION, MODE_DYNAMIC, MODE_TRACKING, MODE_SWITCHING };
 
 extern GameState currentGameState;

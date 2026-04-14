@@ -71,8 +71,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 int dy = mousePos.y - centerY;
 
                 if (dx != 0 || dy != 0) {
-                    camX += dx * sensitivity;
-                    camY += dy * sensitivity;
+                    camX += dx * mouseSensitivity;
+                    camY += dy * mouseSensitivity;
 
                     // Clamping
                     if (camX < -1.5f) camX = -1.5f;
@@ -85,7 +85,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
                 if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
                     currentGameState = STATE_MENU;
-                    Sleep(200); 
+                    Sleep(200);
                 }
             } else {
                 // MENU STATE
@@ -120,9 +120,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 }
                 if (GetAsyncKeyState('5') & 0x8000) {
                     currentGameMode = MODE_SWITCHING;
-                    InitGame(); 
+                    InitGame();
                     currentGameState = STATE_PLAYING;
                     Sleep(200);
+                }
+            
+                // Sensitivity converter hotkey 'K'
+                if (GetAsyncKeyState('K') & 0x8000) {
+                    static int presetIndex = 0;
+                    static const float presets[] = {0.001f, 0.002f, 0.005f, 0.01f, 0.02f};
+                    float newSensitivity = presets[presetIndex];
+                    presetIndex = (presetIndex + 1) % (sizeof(presets)/sizeof(presets[0]));
+                    
+                    // Input validation
+                    if (newSensitivity >= 0.001f && newSensitivity <= 0.02f) {
+                        sensitivity = newSensitivity;
+                        mouseSensitivity = newSensitivity;
+                        char msg[100];
+                        sprintf_s(msg, "Sensitivity changed to %.3f", newSensitivity);
+                        MessageBox(hwnd, msg, "Sensitivity Changed", MB_OK);
+                    } else {
+                        MessageBox(hwnd, "Invalid sensitivity value", "Error", MB_OK | MB_ICONERROR);
+                    }
                 }
 
                 if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
