@@ -19,7 +19,7 @@ extern bool cursorHidden;
 
 // Game States and Modes
 enum GameState { STATE_MENU, STATE_PLAYING };
-enum GameMode { MODE_PRECISION, MODE_CORRECTION };
+enum GameMode { MODE_PRECISION, MODE_CORRECTION, MODE_DYNAMIC, MODE_TRACKING, MODE_SWITCHING };
 
 extern GameState currentGameState;
 extern GameMode currentGameMode;

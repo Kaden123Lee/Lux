@@ -1,9 +1,9 @@
 #include <windows.h>
 #include <vector>
 #include <string>
-#include "Config.h"
-#include "Renderer.h"
-#include "TargetSystem.h"
+#include "Core/Config.h"
+#include "Renderer/Renderer.h"
+#include "Gameplay/TargetSystem.h"
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
@@ -43,6 +43,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     double targetFrameTime = 1.0 / 144.0;
 
     while (isRunning) {
+        QueryPerformanceCounter(&currentTime);
+        double elapsed = (double)(currentTime.QuadPart - lastTime.QuadPart) / frequency.QuadPart;
+
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) isRunning = false;
             TranslateMessage(&msg);
@@ -84,9 +87,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     currentGameState = STATE_MENU;
                     Sleep(200); 
                 }
-                if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
-                    HandleClick(windowWidth / 2, windowHeight / 2);
-                }
             } else {
                 // MENU STATE
                 if (cursorHidden) {
@@ -106,6 +106,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     currentGameState = STATE_PLAYING;
                     Sleep(200);
                 }
+                if (GetAsyncKeyState('3') & 0x8000) {
+                    currentGameMode = MODE_DYNAMIC;
+                    InitGame(); 
+                    currentGameState = STATE_PLAYING;
+                    Sleep(200);
+                }
+                if (GetAsyncKeyState('4') & 0x8000) {
+                    currentGameMode = MODE_TRACKING;
+                    InitGame(); 
+                    currentGameState = STATE_PLAYING;
+                    Sleep(200);
+                }
+                if (GetAsyncKeyState('5') & 0x8000) {
+                    currentGameMode = MODE_SWITCHING;
+                    InitGame(); 
+                    currentGameState = STATE_PLAYING;
+                    Sleep(200);
+                }
 
                 if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
                     InitGame();
@@ -119,10 +137,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
         }
 
-        QueryPerformanceCounter(&currentTime);
-        double elapsed = (double)(currentTime.QuadPart - lastTime.QuadPart) / frequency.QuadPart;
-
         if (elapsed >= targetFrameTime) {
+            if (currentGameState == STATE_PLAYING && GetActiveWindow() == hwnd) {
+                if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
+                    HandleClick(windowWidth / 2, windowHeight / 2, (float)elapsed);
+                }
+            }
+
+            UpdateTargets((float)elapsed);
             RenderFrame(hwnd);
             lastTime = currentTime;
         } else {

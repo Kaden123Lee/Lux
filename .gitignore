@@ -1,0 +1,23 @@
+# Compiled binary
+*.exe
+
+# Toolchain / devkit
+w64devkit/
+w64devkit.exe
+compiler/
+
+# Build artifacts
+*.o
+*.obj
+*.pdb
+
+# IDE / editor
+.vs/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

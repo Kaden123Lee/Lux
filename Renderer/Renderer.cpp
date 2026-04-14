@@ -1,7 +1,7 @@
 #include "Renderer.h"
-#include "Config.h"
-#include "MathUtils.h"
-#include "TargetSystem.h"
+#include "../Core/Config.h"
+#include "../Core/MathUtils.h"
+#include "../Gameplay/TargetSystem.h"
 #include <string>
 #include <algorithm>
 #include <vector>
@@ -19,14 +19,17 @@ static std::vector<Particle> starfield;
 
 void CleanupRenderer() {
     if (hBackBufferDC) {
-        SelectObject(hBackBufferDC, hOldBmp);
-        DeleteObject(hBackBufferBmp);
+        if (hOldBmp) SelectObject(hBackBufferDC, hOldBmp);
+        if (hBackBufferBmp) DeleteObject(hBackBufferBmp);
         DeleteDC(hBackBufferDC);
         hBackBufferDC = NULL;
+        hBackBufferBmp = NULL;
+        hOldBmp = NULL;
     }
 }
 
 void ResizeRenderer(HWND hwnd, int width, int height) {
+    if (width <= 0 || height <= 0) return;
     CleanupRenderer();
     HDC hdc = GetDC(hwnd);
     hBackBufferDC = CreateCompatibleDC(hdc);
@@ -36,7 +39,6 @@ void ResizeRenderer(HWND hwnd, int width, int height) {
     windowWidth = width;
     windowHeight = height;
 
-    // Initialize Starfield (Static depth cues)
     if (starfield.empty()) {
         for (int i = 0; i < 200; ++i) {
             Particle p;
@@ -48,38 +50,44 @@ void ResizeRenderer(HWND hwnd, int width, int height) {
     }
 }
 
+static void DrawGradient(HDC hdc, int w, int h, int cy) {
+    int steps = 64;
+    int stepH = h / steps + 1;
+    for (int i = 0; i < steps; ++i) {
+        int y = i * stepH;
+        float distFromCenter = abs((y + stepH / 2) - cy) / (float)(h / 2);
+        if (distFromCenter > 1.0f) distFromCenter = 1.0f;
+        int val = (int)(15 + 15 * (1.0f - distFromCenter));
+        
+        HBRUSH hBrush = CreateSolidBrush(RGB(val, val, val + 5));
+        RECT r = { 0, y, w, y + stepH };
+        FillRect(hdc, &r, hBrush);
+        DeleteObject(hBrush);
+    }
+}
+
 void RenderFrame(HWND hwnd) {
     if (!hBackBufferDC) return;
 
     int cx = windowWidth / 2;
     int cy = windowHeight / 2;
 
-    // 1. Draw Background (Depth Gradient)
-    for (int i = 0; i < windowHeight; ++i) {
-        float distFromCenter = abs(i - cy) / (float)(windowHeight / 2);
-        int val = (int)(15 + 15 * (1.0f - distFromCenter));
-        HPEN gradePen = CreatePen(PS_SOLID, 1, RGB(val, val, val + 5));
-        SelectObject(hBackBufferDC, gradePen);
-        MoveToEx(hBackBufferDC, 0, i, NULL);
-        LineTo(hBackBufferDC, windowWidth, i);
-        DeleteObject(gradePen);
-    }
+    // 1. Draw Background
+    DrawGradient(hBackBufferDC, windowWidth, windowHeight, cy);
     
-    // 2. Draw 3D Box (Super-Dense Wireframe)
+    // 2. Draw 3D Box (Wireframe)
     HPEN roomPen = CreatePen(PS_SOLID, 1, RGB(55, 55, 75));
-    SelectObject(hBackBufferDC, roomPen);
+    HGDIOBJ hOldPen = SelectObject(hBackBufferDC, roomPen);
     
     float sideX = roomWidth / 2.0f;
     
-    // Draw 50 rings for an even deeper, high-precision perspective
-    for (float gz = 0.5f; gz <= 50.0f; gz += 1.0f) {
+    for (float gz = 0.5f; gz <= 50.0f; gz += 2.0f) {
         float s = 1.0f / (gz * 0.1f + 1.0f);
         int xL = cx + (int)((-sideX - camX * 2.0f) * (windowWidth/2) * s);
         int xR = cx + (int)((sideX - camX * 2.0f) * (windowWidth/2) * s);
         int yT = cy + (int)((ceilY - camY * 2.0f) * (windowHeight/2) * s);
         int yB = cy + (int)((groundY - camY * 2.0f) * (windowHeight/2) * s);
 
-        // Draw the ring
         MoveToEx(hBackBufferDC, xL, yT, NULL);
         LineTo(hBackBufferDC, xR, yT);
         LineTo(hBackBufferDC, xR, yB);
@@ -87,9 +95,6 @@ void RenderFrame(HWND hwnd) {
         LineTo(hBackBufferDC, xL, yT);
     }
 
-
-
-    // Perspective Lines for corners
     float corners[4][2] = {{-sideX, ceilY}, {sideX, ceilY}, {sideX, groundY}, {-sideX, groundY}};
     for (int i = 0; i < 4; ++i) {
         float sNear = 1.0f / (0.5f * 0.1f + 1.0f);
@@ -102,9 +107,10 @@ void RenderFrame(HWND hwnd) {
         LineTo(hBackBufferDC, x2, y2);
     }
 
+    SelectObject(hBackBufferDC, hOldPen);
     DeleteObject(roomPen);
 
-    // 3. Draw Stars (Deep Parallax)
+    // 3. Draw Stars
     for (const auto& p : starfield) {
         float s = 1.0f / (p.z * 0.1f + 1.0f); 
         int sx = cx + (int)((p.x - camX * 2.0f) * (windowWidth/2) * s);
@@ -125,33 +131,60 @@ void RenderFrame(HWND hwnd) {
 
         float depth = t.z * 15.0f + 2.0f; 
         float s = 1.0f / (depth * 0.1f + 1.0f);
-        int sx = cx + (int)((t.x - camX) * (windowWidth/2) * s);
-        int sy = cy + (int)((t.y - camY) * (windowHeight/2) * s);
+        int sx = cx + (int)((t.x - camX * 2.0f) * (windowWidth / 2) * s);
+        int sy = cy + (int)((t.y - camY * 2.0f) * (windowHeight / 2) * s);
         
-        float r = (int)(16 * s); // Small for both modes
+        float baseR = 16.0f;
+        if (currentGameMode == MODE_DYNAMIC) baseR = 48.0f;
+        if (currentGameMode == MODE_TRACKING || currentGameMode == MODE_SWITCHING) baseR = 144.0f;
+        float r = (baseR * s);
 
         int brightness = (int)(255 * s * 1.5f);
         if (brightness > 255) brightness = 255;
         
         HBRUSH shadowBrush = CreateSolidBrush(RGB(5, 5, 8));
-        SelectObject(hBackBufferDC, GetStockObject(NULL_PEN));
+        HGDIOBJ hOldObj = SelectObject(hBackBufferDC, GetStockObject(NULL_PEN));
         SelectObject(hBackBufferDC, shadowBrush);
         int shadowY = cy + (int)((groundY - camY * 2.0f) * (windowHeight/2) * s);
-        Ellipse(hBackBufferDC, sx - r, shadowY - (r/4), sx + r, shadowY + (r/4));
-        DeleteObject(shadowBrush);
-
+        Ellipse(hBackBufferDC, sx - (int)r, shadowY - (int)r/4, sx + (int)r, shadowY + (int)r/4);
+        
         HBRUSH targetBrush = CreateSolidBrush(RGB(0, brightness, brightness));
         SelectObject(hBackBufferDC, targetBrush);
-        Ellipse(hBackBufferDC, sx - r, sy - r, sx + r, sy + r);
+        Ellipse(hBackBufferDC, sx - (int)r, sy - (int)r, sx + (int)r, sy + (int)r);
+        
+        // Health Bar for Tracking / Switching
+        if (currentGameMode == MODE_TRACKING || currentGameMode == MODE_SWITCHING) {
+            int barWidth = (int)(r * 2.0f);
+            int barHeight = 6;
+            int barY = sy - (int)r - 12;
+            
+            // Background
+            HBRUSH bgBrush = CreateSolidBrush(RGB(40, 40, 40));
+            RECT bgRect = { sx - barWidth / 2, barY, sx + barWidth / 2, barY + barHeight };
+            FillRect(hBackBufferDC, &bgRect, bgBrush);
+            DeleteObject(bgBrush);
+            
+            // Health
+            float hpPercent = t.health / t.maxHealth;
+            if (hpPercent < 0) hpPercent = 0;
+            HBRUSH hpBrush = CreateSolidBrush(RGB(0, 255, 100));
+            RECT hpRect = { sx - barWidth / 2, barY, sx - barWidth / 2 + (int)(barWidth * hpPercent), barY + barHeight };
+            FillRect(hBackBufferDC, &hpRect, hpBrush);
+            DeleteObject(hpBrush);
+        }
+
+        SelectObject(hBackBufferDC, hOldObj);
+        DeleteObject(shadowBrush);
         DeleteObject(targetBrush);
     }
     
-    // 5. Crosshair (Red dot)
-    SetPixel(hBackBufferDC, cx, cy, RGB(255, 0, 0));
-    SetPixel(hBackBufferDC, cx-1, cy, RGB(255, 0, 0));
-    SetPixel(hBackBufferDC, cx+1, cy, RGB(255, 0, 0));
-    SetPixel(hBackBufferDC, cx, cy-1, RGB(255, 0, 0));
-    SetPixel(hBackBufferDC, cx, cy+1, RGB(255, 0, 0));
+    // 5. Crosshair
+    HPEN crossPen = CreatePen(PS_SOLID, 1, RGB(255, 0, 0));
+    HGDIOBJ hOldCrossPen = SelectObject(hBackBufferDC, crossPen);
+    MoveToEx(hBackBufferDC, cx - 8, cy, NULL); LineTo(hBackBufferDC, cx + 9, cy);
+    MoveToEx(hBackBufferDC, cx, cy - 8, NULL); LineTo(hBackBufferDC, cx, cy + 9);
+    SelectObject(hBackBufferDC, hOldCrossPen);
+    DeleteObject(crossPen);
 
     // 6. HUD / MENU OVERLAY
     if (currentGameState == STATE_MENU) {
@@ -166,7 +199,10 @@ void RenderFrame(HWND hwnd) {
         const char* title = "LUX AIM TRAINER";
         const char* opt1 = "[1] PRECISION";
         const char* opt2 = "[2] CORRECTION (6-Sphere)";
-        const char* prompt = "PRESS 1 OR 2 TO START";
+        const char* opt3 = "[3] DYNAMIC (B180)";
+        const char* opt4 = "[4] TRACKING (Smoothbot)";
+        const char* opt5 = "[5] SWITCHING (PatTargetSwitch)";
+        const char* prompt = "PRESS 1, 2, 3, 4 OR 5 TO START";
 
         TextOutA(hBackBufferDC, cx - 60, cy - 80, title, (int)strlen(title));
         
@@ -175,14 +211,27 @@ void RenderFrame(HWND hwnd) {
         
         SetTextColor(hBackBufferDC, (currentGameMode == MODE_CORRECTION ? RGB(0, 255, 255) : RGB(150, 150, 150)));
         TextOutA(hBackBufferDC, cx - 60, cy, opt2, (int)strlen(opt2));
+
+        SetTextColor(hBackBufferDC, (currentGameMode == MODE_DYNAMIC ? RGB(0, 255, 255) : RGB(150, 150, 150)));
+        TextOutA(hBackBufferDC, cx - 60, cy + 30, opt3, (int)strlen(opt3));
+
+        SetTextColor(hBackBufferDC, (currentGameMode == MODE_TRACKING ? RGB(0, 255, 255) : RGB(150, 150, 150)));
+        TextOutA(hBackBufferDC, cx - 60, cy + 60, opt4, (int)strlen(opt4));
+
+        SetTextColor(hBackBufferDC, (currentGameMode == MODE_SWITCHING ? RGB(0, 255, 255) : RGB(150, 150, 150)));
+        TextOutA(hBackBufferDC, cx - 60, cy + 90, opt5, (int)strlen(opt5));
         
         SetTextColor(hBackBufferDC, RGB(200, 200, 200));
-        TextOutA(hBackBufferDC, cx - 75, cy + 50, prompt, (int)strlen(prompt));
+        TextOutA(hBackBufferDC, cx - 90, cy + 130, prompt, (int)strlen(prompt));
     } else {
         SetBkMode(hBackBufferDC, TRANSPARENT);
         SetTextColor(hBackBufferDC, RGB(0, 200, 200));
-        std::string modeName = (currentGameMode == MODE_PRECISION) ? "PRECISION" : "CORRECTION";
-        std::string modeTxt = "MODE: " + modeName;
+        std::string modeTxt = "MODE: ";
+        if (currentGameMode == MODE_PRECISION) modeTxt += "PRECISION";
+        else if (currentGameMode == MODE_CORRECTION) modeTxt += "CORRECTION";
+        else if (currentGameMode == MODE_DYNAMIC) modeTxt += "DYNAMIC";
+        else if (currentGameMode == MODE_TRACKING) modeTxt += "TRACKING";
+        else modeTxt += "SWITCHING";
         TextOutA(hBackBufferDC, 10, 10, modeTxt.c_str(), (int)modeTxt.length());
 
         SetTextColor(hBackBufferDC, RGB(255, 255, 255));
@@ -190,8 +239,6 @@ void RenderFrame(HWND hwnd) {
         TextOutA(hBackBufferDC, 10, 30, scoreTxt.c_str(), (int)scoreTxt.length());
     }
 
-
-    
     HDC hdc = GetDC(hwnd);
     BitBlt(hdc, 0, 0, windowWidth, windowHeight, hBackBufferDC, 0, 0, SRCCOPY);
     ReleaseDC(hwnd, hdc);
