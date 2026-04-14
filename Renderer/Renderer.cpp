@@ -223,6 +223,49 @@ void RenderFrame(HWND hwnd) {
         
         SetTextColor(hBackBufferDC, RGB(200, 200, 200));
         TextOutA(hBackBufferDC, cx - 90, cy + 130, prompt, (int)strlen(prompt));
+
+        const char* opt6 = "[6] SETTINGS";
+        SetTextColor(hBackBufferDC, RGB(100, 100, 255));
+        TextOutA(hBackBufferDC, 10, windowHeight - 30, opt6, (int)strlen(opt6));
+    } else if (currentGameState == STATE_SETTINGS) {
+        HBRUSH overlayBrush = CreateSolidBrush(RGB(5, 5, 12));
+        RECT overlayRect = {0, 0, windowWidth, windowHeight};
+        FillRect(hBackBufferDC, &overlayRect, overlayBrush);
+        DeleteObject(overlayBrush);
+
+        SetBkMode(hBackBufferDC, TRANSPARENT);
+        SetTextColor(hBackBufferDC, RGB(255, 255, 255));
+
+        const char* title = "SETTINGS";
+        TextOutA(hBackBufferDC, cx - 30, cy - 100, title, (int)strlen(title));
+
+        std::string sensTxt = "Sensitivity: " + std::to_string(mouseSensitivity);
+        TextOutA(hBackBufferDC, cx - 60, cy - 30, sensTxt.c_str(), (int)sensTxt.length());
+
+        // Draw Sensitivity Bar
+        int barWidth = 200;
+        int barHeight = 20;
+        int barX = cx - barWidth / 2;
+        int barY = cy;
+
+        // Background
+        HBRUSH bgBrush = CreateSolidBrush(RGB(40, 40, 40));
+        RECT bgRect = { barX, barY, barX + barWidth, barY + barHeight };
+        FillRect(hBackBufferDC, &bgRect, bgBrush);
+        DeleteObject(bgBrush);
+
+        // Fill based on sensitivity (map 0-0.05 to 0-barWidth)
+        float fillPercent = mouseSensitivity / 0.05f;
+        if (fillPercent > 1.0f) fillPercent = 1.0f;
+        HBRUSH fillBrush = CreateSolidBrush(RGB(0, 255, 255));
+        RECT fillRect = { barX, barY, barX + (int)(barWidth * fillPercent), barY + barHeight };
+        FillRect(hBackBufferDC, &fillRect, fillBrush);
+        DeleteObject(fillBrush);
+
+        const char* help = "Use LEFT / RIGHT arrows to adjust";
+        const char* back = "Press ESC to return to menu";
+        TextOutA(hBackBufferDC, cx - 90, cy + 40, help, (int)strlen(help));
+        TextOutA(hBackBufferDC, cx - 75, cy + 70, back, (int)strlen(back));
     } else {
         SetBkMode(hBackBufferDC, TRANSPARENT);
         SetTextColor(hBackBufferDC, RGB(0, 200, 200));

@@ -87,7 +87,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     currentGameState = STATE_MENU;
                     Sleep(200);
                 }
-            } else {
+            } else if (currentGameState == STATE_MENU) {
                 // MENU STATE
                 if (cursorHidden) {
                     ShowCursor(TRUE);
@@ -124,24 +124,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     currentGameState = STATE_PLAYING;
                     Sleep(200);
                 }
-            
-                // Sensitivity converter hotkey 'K'
-                if (GetAsyncKeyState('K') & 0x8000) {
-                    static int presetIndex = 0;
-                    static const float presets[] = {0.001f, 0.002f, 0.005f, 0.01f, 0.02f};
-                    float newSensitivity = presets[presetIndex];
-                    presetIndex = (presetIndex + 1) % (sizeof(presets)/sizeof(presets[0]));
-                    
-                    // Input validation
-                    if (newSensitivity >= 0.001f && newSensitivity <= 0.02f) {
-                        sensitivity = newSensitivity;
-                        mouseSensitivity = newSensitivity;
-                        char msg[100];
-                        sprintf_s(msg, "Sensitivity changed to %.3f", newSensitivity);
-                        MessageBox(hwnd, msg, "Sensitivity Changed", MB_OK);
-                    } else {
-                        MessageBox(hwnd, "Invalid sensitivity value", "Error", MB_OK | MB_ICONERROR);
-                    }
+                if (GetAsyncKeyState('6') & 0x8000) {
+                    currentGameState = STATE_SETTINGS;
+                    Sleep(200);
                 }
 
                 if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
@@ -152,7 +137,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
                     isRunning = false;
                 }
+            } else if (currentGameState == STATE_SETTINGS) {
+                if (cursorHidden) {
+                    ShowCursor(TRUE);
+                    cursorHidden = false;
+                }
 
+                if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
+                    mouseSensitivity -= 0.0001f;
+                    if (mouseSensitivity < 0.0001f) mouseSensitivity = 0.0001f;
+                    sensitivity = mouseSensitivity;
+                    Sleep(50);
+                }
+                if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
+                    mouseSensitivity += 0.0001f;
+                    if (mouseSensitivity > 0.05f) mouseSensitivity = 0.05f;
+                    sensitivity = mouseSensitivity;
+                    Sleep(50);
+                }
+
+                if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+                    currentGameState = STATE_MENU;
+                    Sleep(200);
+                }
             }
         }
 
