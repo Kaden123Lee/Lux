@@ -8,7 +8,11 @@ bool cursorHidden = false;
 
 GameState currentGameState = STATE_MENU;
 GameMode currentGameMode = MODE_PRECISION;
+GameType currentSelectedGame = GAME_LUX;
 int score = 0;
+std::string sensitivityInput = "";
+bool isTypingSensitivity = false;
+bool isGameDropdownOpen = false;
 
 
 int windowWidth = 800;

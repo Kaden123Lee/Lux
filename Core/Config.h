@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <string>
 
 const float wallZ = 20.0f;
 const float roomWidth = 6.0f; 
@@ -23,10 +24,15 @@ extern float mouseSensitivity;
 // Game States and Modes
 enum GameState { STATE_MENU, STATE_PLAYING, STATE_SETTINGS };
 enum GameMode { MODE_PRECISION, MODE_CORRECTION, MODE_DYNAMIC, MODE_TRACKING, MODE_SWITCHING };
+enum GameType { GAME_LUX, GAME_VALORANT, GAME_CS2, GAME_OVERWATCH };
 
 extern GameState currentGameState;
 extern GameMode currentGameMode;
+extern GameType currentSelectedGame;
 extern int score;
+extern std::string sensitivityInput;
+extern bool isTypingSensitivity;
+extern bool isGameDropdownOpen;
 
 
 // Window size

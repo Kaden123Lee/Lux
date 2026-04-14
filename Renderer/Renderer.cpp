@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "../Core/Config.h"
 #include "../Core/MathUtils.h"
+#include "../Core/GameLibrary.h"
 #include "../Gameplay/TargetSystem.h"
 #include <string>
 #include <algorithm>
@@ -172,7 +173,6 @@ void RenderFrame(HWND hwnd) {
             FillRect(hBackBufferDC, &hpRect, hpBrush);
             DeleteObject(hpBrush);
         }
-
         SelectObject(hBackBufferDC, hOldObj);
         DeleteObject(shadowBrush);
         DeleteObject(targetBrush);
@@ -239,8 +239,69 @@ void RenderFrame(HWND hwnd) {
         const char* title = "SETTINGS";
         TextOutA(hBackBufferDC, cx - 30, cy - 100, title, (int)strlen(title));
 
-        std::string sensTxt = "Sensitivity: " + std::to_string(mouseSensitivity);
+        std::string sensTxt;
+        if (isTypingSensitivity) {
+            sensTxt = gameLibrary[currentSelectedGame].name + " Sens: " + sensitivityInput + "_";
+            SetTextColor(hBackBufferDC, RGB(0, 255, 255));
+        } else {
+            float displayVal = mouseSensitivity;
+            if (currentSelectedGame != GAME_LUX) {
+                displayVal = mouseSensitivity / GetGameMultiplier(currentSelectedGame);
+            }
+            sensTxt = gameLibrary[currentSelectedGame].name + " Sens: " + std::to_string(displayVal);
+            // Cleaner float display
+            size_t dotPos = sensTxt.find('.');
+            if (dotPos != std::string::npos) {
+                sensTxt.erase(sensTxt.find_last_not_of('0') + 1, std::string::npos);
+                if (sensTxt.back() == '.') sensTxt.pop_back();
+            }
+        }
         TextOutA(hBackBufferDC, cx - 60, cy - 30, sensTxt.c_str(), (int)sensTxt.length());
+
+        // Game Selection Dropdown
+        int ddX = cx - 100;
+        int ddY = cy + 30;
+        int ddW = 200;
+        int ddH = 30;
+
+        // Draw Header
+        HBRUSH headerBrush = CreateSolidBrush(RGB(20, 20, 40));
+        HPEN borderPen = CreatePen(PS_SOLID, 1, isGameDropdownOpen ? RGB(0, 255, 255) : RGB(100, 100, 150));
+        HGDIOBJ hOldB = SelectObject(hBackBufferDC, headerBrush);
+        HGDIOBJ hOldP = SelectObject(hBackBufferDC, borderPen);
+        
+        Rectangle(hBackBufferDC, ddX, ddY, ddX + ddW, ddY + ddH);
+
+        SetTextColor(hBackBufferDC, RGB(255, 255, 255));
+        std::string currentLabel = "Game: " + gameLibrary[currentSelectedGame].name;
+        TextOutA(hBackBufferDC, ddX + 10, ddY + 7, currentLabel.c_str(), (int)currentLabel.length());
+        
+        // Small Arrow
+        TextOutA(hBackBufferDC, ddX + ddW - 25, ddY + 7, isGameDropdownOpen ? "^" : "v", 1);
+
+        if (isGameDropdownOpen) {
+            // Draw Options
+            int optY = ddY + ddH;
+            GameType types[] = { GAME_LUX, GAME_VALORANT, GAME_CS2, GAME_OVERWATCH };
+            
+            for (int i = 0; i < 4; ++i) {
+                HBRUSH optBrush = CreateSolidBrush(RGB(30 + i*5, 30 + i*5, 60 + i*5));
+                SelectObject(hBackBufferDC, optBrush);
+                Rectangle(hBackBufferDC, ddX, optY, ddX + ddW, optY + ddH);
+                
+                SetTextColor(hBackBufferDC, currentSelectedGame == types[i] ? RGB(0, 255, 255) : RGB(200, 200, 200));
+                std::string name = gameLibrary[types[i]].name;
+                TextOutA(hBackBufferDC, ddX + 10, optY + 7, name.c_str(), (int)name.length());
+                
+                optY += ddH;
+                DeleteObject(optBrush);
+            }
+        }
+
+        SelectObject(hBackBufferDC, hOldB);
+        SelectObject(hBackBufferDC, hOldP);
+        DeleteObject(headerBrush);
+        DeleteObject(borderPen);
 
         // Draw Sensitivity Bar
         int barWidth = 200;
@@ -254,18 +315,33 @@ void RenderFrame(HWND hwnd) {
         FillRect(hBackBufferDC, &bgRect, bgBrush);
         DeleteObject(bgBrush);
 
-        // Fill based on sensitivity (map 0-0.05 to 0-barWidth)
-        float fillPercent = mouseSensitivity / 0.05f;
+        // Fill based on current sensitivity (map 0-0.05 to 0-barWidth)
+        float currentDisplaySens = mouseSensitivity;
+        if (isTypingSensitivity && currentSelectedGame == GAME_LUX) {
+            try { currentDisplaySens = std::stof(sensitivityInput); } catch(...) {}
+        }
+        float fillPercent = currentDisplaySens / 0.05f;
         if (fillPercent > 1.0f) fillPercent = 1.0f;
-        HBRUSH fillBrush = CreateSolidBrush(RGB(0, 255, 255));
+        if (fillPercent < 0.0f) fillPercent = 0.0f;
+        
+        HBRUSH fillBrush = CreateSolidBrush(isTypingSensitivity ? RGB(255, 255, 0) : RGB(0, 255, 255));
         RECT fillRect = { barX, barY, barX + (int)(barWidth * fillPercent), barY + barHeight };
         FillRect(hBackBufferDC, &fillRect, fillBrush);
         DeleteObject(fillBrush);
 
-        const char* help = "Use LEFT / RIGHT arrows to adjust";
-        const char* back = "Press ESC to return to menu";
-        TextOutA(hBackBufferDC, cx - 90, cy + 40, help, (int)strlen(help));
-        TextOutA(hBackBufferDC, cx - 75, cy + 70, back, (int)strlen(back));
+        if (isTypingSensitivity) {
+            const char* help = "Type value and press ENTER to apply";
+            const char* back = "Press ESC to cancel";
+            SetTextColor(hBackBufferDC, RGB(200, 200, 200));
+            TextOutA(hBackBufferDC, cx - 110, cy + 100, help, (int)strlen(help));
+            TextOutA(hBackBufferDC, cx - 65, cy + 130, back, (int)strlen(back));
+        } else {
+            const char* help = "Click values to change / Press T to type";
+            const char* back = "Press ESC to return to menu";
+            SetTextColor(hBackBufferDC, RGB(200, 200, 200));
+            TextOutA(hBackBufferDC, cx - 110, cy + 100, help, (int)strlen(help));
+            TextOutA(hBackBufferDC, cx - 75, cy + 130, back, (int)strlen(back));
+        }
     } else {
         SetBkMode(hBackBufferDC, TRANSPARENT);
         SetTextColor(hBackBufferDC, RGB(0, 200, 200));
