@@ -6,7 +6,7 @@
 #include <cmath>
 
 std::vector<Target> targets;
-
+// Iterate to add new mode
 void SpawnTarget() {
     switch (currentGameMode) {
         case MODE_PRECISION:  SpawnPrecisionMode();  break;
@@ -14,6 +14,7 @@ void SpawnTarget() {
         case MODE_DYNAMIC:    SpawnDynamicMode();    break;
         case MODE_TRACKING:   SpawnTrackingMode();   break;
         case MODE_SWITCHING:  SpawnSwitchingMode();  break;
+        
     }
 }
 
