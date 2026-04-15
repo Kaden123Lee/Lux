@@ -149,7 +149,7 @@ void RenderFrame(HWND hwnd) {
         int shadowY = cy + (int)((groundY - camY * 2.0f) * (windowHeight/2) * s);
         Ellipse(hBackBufferDC, sx - (int)r, shadowY - (int)r/4, sx + (int)r, shadowY + (int)r/4);
         
-        HBRUSH targetBrush = CreateSolidBrush(RGB(0, brightness, brightness));
+        HBRUSH targetBrush = CreateSolidBrush(RGB(ballColorR, ballColorG, ballColorB)); // this is the fill color for the brush
         SelectObject(hBackBufferDC, targetBrush);
         Ellipse(hBackBufferDC, sx - (int)r, sy - (int)r, sx + (int)r, sy + (int)r);
         
