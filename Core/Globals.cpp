@@ -17,3 +17,7 @@ bool isGameDropdownOpen = false;
 
 int windowWidth = 800;
 int windowHeight = 600;
+
+int ballColorR = 0;
+int ballColorG = 255;
+int ballColorB = 255;

@@ -239,6 +239,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                         Sleep(200);
                     }
                 }
+                if (GetAsyncKeyState('C') & 0x8000) {
+                    if (ballColorR == 0 && ballColorG == 255) {
+                        ballColorR = 255; ballColorG = 0; ballColorB = 0;
+                    } // Cyan -> Red
+                    else if (ballColorR == 255) {
+                        ballColorR = 0;
+                        ballColorG = 255;
+                        ballColorB = 0;
+                    } // Red -> Green
+                    else {
+                        ballColorR = 0;
+                        ballColorG = 255;
+                        ballColorB = 255;
+                    }
+                    Sleep(200);
+                }
 
                 if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
                     if (isTypingSensitivity) {

@@ -38,3 +38,7 @@ extern bool isGameDropdownOpen;
 // Window size
 extern int windowWidth;
 extern int windowHeight;
+
+extern int ballColorR;
+extern int ballColorG;
+extern int ballColorB;

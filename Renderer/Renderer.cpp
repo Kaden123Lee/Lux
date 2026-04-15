@@ -229,7 +229,7 @@ void RenderFrame(HWND hwnd) {
         TextOutA(hBackBufferDC, 10, windowHeight - 30, opt6, (int)strlen(opt6));
     } else if (currentGameState == STATE_SETTINGS) {
         HBRUSH overlayBrush = CreateSolidBrush(RGB(5, 5, 12));
-        RECT overlayRect = {0, 0, windowWidth, windowHeight};
+        RECT overlayRect = { 0, 0, windowWidth, windowHeight };
         FillRect(hBackBufferDC, &overlayRect, overlayBrush);
         DeleteObject(overlayBrush);
 
@@ -238,6 +238,14 @@ void RenderFrame(HWND hwnd) {
 
         const char* title = "SETTINGS";
         TextOutA(hBackBufferDC, cx - 30, cy - 100, title, (int)strlen(title));
+
+        const char* colorLabel = "BALL COLOR (Press C to cycle):";
+        TextOutA(hBackBufferDC, cx - 100, cy + 180, colorLabel, (int)strlen(colorLabel));
+        
+        HBRUSH previewBrush = CreateSolidBrush(RGB(ballColorR, ballColorG, ballColorB));
+        RECT previewRect = { cx + 110, cy + 175, cx + 140, cy + 205 };
+        FillRect(hBackBufferDC, &previewRect, previewBrush);
+        DeleteObject(previewBrush);
 
         std::string sensTxt;
         if (isTypingSensitivity) {
